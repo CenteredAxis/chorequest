@@ -1,0 +1,26 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${PORT:-3000}:3000"
+    volumes:
+      - chorequest_data:/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DB_PATH=/data/chorequest.db
+      - UPLOAD_DIR=/data/uploads
+      - SESSION_SECRET=${SESSION_SECRET:-change_this_secret_now_in_production}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/auth/whoami"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  chorequest_data:
+    driver: local
