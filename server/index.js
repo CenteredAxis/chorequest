@@ -31,8 +31,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Session setup
+const dbPath = process.env.DB_PATH || '/data/chorequest.db';
 const sessionStore = new SqliteSessionStore({
-  db: process.env.DB_PATH || '/data/chorequest.db'
+  db: path.basename(dbPath),
+  dir: path.dirname(dbPath)
 });
 
 app.use(
