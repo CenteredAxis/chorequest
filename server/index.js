@@ -22,6 +22,7 @@ const badgesRoutes = require('./routes/badges');
 const notificationsRoutes = require('./routes/notifications');
 const uploadsRoutes = require('./routes/uploads');
 const leaderboardRoutes = require('./routes/leaderboard');
+const aiRoutes = require('./routes/ai');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -68,6 +69,7 @@ app.use('/api/badges', badgesRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/uploads', uploadsRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Serve static files from Vite build
 const publicPath = path.join(__dirname, 'public');

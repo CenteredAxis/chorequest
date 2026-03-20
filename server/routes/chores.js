@@ -88,6 +88,9 @@ router.put('/:id', requireParent, (req, res) => {
       }
     }
 
+    // Invalidate cached AI narrative
+    db.prepare('DELETE FROM chore_narratives WHERE chore_id = ?').run(req.params.id);
+
     res.json({ message: 'Chore updated' });
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -101,6 +104,7 @@ router.delete('/:id', requireParent, (req, res) => {
   try {
     db.prepare('DELETE FROM chore_assignments WHERE chore_id = ?').run(req.params.id);
     db.prepare('DELETE FROM completions WHERE chore_id = ?').run(req.params.id);
+    db.prepare('DELETE FROM chore_narratives WHERE chore_id = ?').run(req.params.id);
     db.prepare('DELETE FROM chores WHERE id = ? AND parent_id = ?').run(
       req.params.id,
       req.session.parentId

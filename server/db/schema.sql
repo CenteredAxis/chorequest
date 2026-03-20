@@ -135,3 +135,13 @@ CREATE TABLE IF NOT EXISTS notifications (
   reference_type TEXT,
   FOREIGN KEY (parent_id) REFERENCES parents(id)
 );
+
+-- AI-generated chore narratives cache
+CREATE TABLE IF NOT EXISTS chore_narratives (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  chore_id INTEGER NOT NULL UNIQUE,
+  narrative TEXT NOT NULL,
+  chore_hash TEXT NOT NULL,
+  generated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (chore_id) REFERENCES chores(id)
+);

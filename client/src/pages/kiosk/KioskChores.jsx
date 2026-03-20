@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { chores as choresApi, uploadProof } from '../../api/client.js';
+import React, { useState, useRef, useEffect } from 'react';
+import { chores as choresApi, ai as aiApi, uploadProof } from '../../api/client.js';
 import { useApi } from '../../hooks/useApi.js';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import ChoreCard from '../../components/kiosk/ChoreCard.jsx';
@@ -23,6 +23,7 @@ export default function KioskChores() {
   const [photoPreview, setPhotoPreview] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [joinConfirm, setJoinConfirm] = useState(null); // chore to join
+  const [narratives, setNarratives] = useState({});
   const fileRef = useRef();
 
   const { data: mine,      loading: loadMine,      refetch: refetchMine }      = useApi(() => choresApi.myInstances(),   []);
@@ -30,6 +31,16 @@ export default function KioskChores() {
   const { data: completed, loading: loadCompleted, refetch: refetchCompleted } = useApi(() => choresApi.completed(), []);
 
   const refetchAll = () => { refetchMine(); refetchOpen(); refetchCompleted(); };
+
+  // Fetch AI narratives for visible chores
+  useEffect(() => {
+    const allChores = [...(mine || []), ...(open || [])];
+    const ids = [...new Set(allChores.map(c => c.chore_id || c.id).filter(Boolean))];
+    if (ids.length === 0) return;
+    aiApi.narratives(ids)
+      .then(res => setNarratives(res.narratives || {}))
+      .catch(() => {}); // Silently fail — narratives are optional
+  }, [mine, open]);
 
   const handleClaim = async (instanceId) => {
     try {
@@ -131,6 +142,7 @@ export default function KioskChores() {
             <ChoreCard
               key={chore.id}
               chore={chore}
+              narrative={narratives[chore.chore_id || chore.id]}
               onClaim={tab === 'open' ? () => handleClaim(chore.id) : undefined}
               onJoin={chore.do_together && tab === 'open' ? () => setJoinConfirm(chore) : undefined}
               onSubmit={

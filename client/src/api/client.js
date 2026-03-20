@@ -149,6 +149,13 @@ export const leaderboard = {
   get: () => fetch(`${BASE_URL}/leaderboard`).then(handleResponse),
 };
 
+export const ai = {
+  narratives: (choreIds) =>
+    fetch(`${BASE_URL}/ai/narratives?choreIds=${choreIds.join(',')}`).then(handleResponse),
+  suggestChores: () =>
+    fetch(`${BASE_URL}/ai/suggest-chores`, { method: 'POST' }).then(handleResponse),
+};
+
 export async function uploadProof(file) {
   const formData = new FormData();
   formData.append('file', file);

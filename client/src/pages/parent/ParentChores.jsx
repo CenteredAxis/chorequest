@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { chores as choresApi, kids as kidsApi } from '../../api/client.js';
+import { chores as choresApi, kids as kidsApi, ai as aiApi } from '../../api/client.js';
 import { useApi } from '../../hooks/useApi.js';
 import { useToast } from '../../components/ui/Toast.jsx';
 import { QuestLoadingScreen } from '../../components/ui/Spinner.jsx';
+import { QuestModal } from '../../components/ui/Modal.jsx';
 
 export default function ParentChores() {
   const toast = useToast();
@@ -20,6 +21,9 @@ export default function ParentChores() {
   const [assignedKids, setAssignedKids] = useState([]);
   const [doTogether, setDoTogether] = useState(false);
   const [requirePhoto, setRequirePhoto] = useState(false);
+  const [showSuggest, setShowSuggest] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
 
   const { data: chores, loading: loadingChores, refetch: refetchChores } = useApi(() => choresApi.list(), []);
   const { data: kids, loading: loadingKids } = useApi(() => kidsApi.list(), []);
@@ -69,6 +73,29 @@ export default function ParentChores() {
     }
   };
 
+  const handleSuggestChores = async () => {
+    setShowSuggest(true);
+    setLoadingSuggestions(true);
+    setSuggestions([]);
+    try {
+      const res = await aiApi.suggestChores();
+      setSuggestions(res.suggestions || []);
+    } catch (err) {
+      toast.error(err.message || 'Failed to get suggestions');
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
+
+  const useSuggestion = (s) => {
+    setTitle(s.title);
+    setDescription(s.description || '');
+    setCoinReward(String(s.coin_reward || 10));
+    setXpReward(String(s.xp_reward || 50));
+    setShowSuggest(false);
+    setShowForm(true);
+  };
+
   const handleDeleteChore = async (choreId) => {
     if (!window.confirm('Delete this chore?')) return;
     try {
@@ -90,12 +117,20 @@ export default function ParentChores() {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-black text-white font-quest">⚔️ Chores</h2>
         {!showForm && (
-          <button
-            onClick={() => setShowForm(true)}
-            className="px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white font-bold text-sm transition-all"
-          >
-            + Add Chore
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleSuggestChores}
+              className="px-4 py-2 rounded-lg bg-purple-500 hover:bg-purple-600 text-white font-bold text-sm transition-all"
+            >
+              AI Suggest
+            </button>
+            <button
+              onClick={() => setShowForm(true)}
+              className="px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white font-bold text-sm transition-all"
+            >
+              + Add Chore
+            </button>
+          </div>
         )}
       </div>
 
@@ -286,6 +321,46 @@ export default function ParentChores() {
           ))}
         </div>
       )}
+
+      {/* AI Suggestions Modal */}
+      <QuestModal
+        open={showSuggest}
+        onClose={() => setShowSuggest(false)}
+        title="AI Chore Suggestions"
+      >
+        {loadingSuggestions ? (
+          <div className="text-center py-8">
+            <div className="text-4xl mb-3 animate-bounce">🤖</div>
+            <p className="text-white/60 text-sm">Thinking up some quests...</p>
+          </div>
+        ) : suggestions.length === 0 ? (
+          <div className="text-center py-8 text-white/40">
+            <p>No suggestions available. Try again later.</p>
+          </div>
+        ) : (
+          <div className="space-y-3 max-h-96 overflow-y-auto">
+            {suggestions.map((s, i) => (
+              <div key={i} className="p-3 rounded-xl bg-white/5 border border-white/10">
+                <div className="font-bold text-white">{s.title}</div>
+                {s.description && (
+                  <p className="text-white/50 text-xs mt-1">{s.description}</p>
+                )}
+                <div className="flex items-center justify-between mt-2">
+                  <div className="text-xs text-white/40">
+                    🪙 {s.coin_reward} · ⭐ {s.xp_reward} XP
+                  </div>
+                  <button
+                    onClick={() => useSuggestion(s)}
+                    className="px-3 py-1 rounded-lg bg-green-500/20 hover:bg-green-500/30 text-green-300 text-xs font-bold transition-colors"
+                  >
+                    Use This
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </QuestModal>
     </div>
   );
 }

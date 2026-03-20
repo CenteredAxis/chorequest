@@ -4,7 +4,13 @@
       "Bash(docker build:*)",
       "Bash(git init:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(gh repo:*)",
+      "Bash(git push:*)",
+      "Bash(gh run:*)",
+      "Bash(ssh jordan@10.0.0.121 \"cd /opt/docker/docker_data && docker compose pull chorequest && docker compose up -d chorequest\")",
+      "Bash(ssh jordan@10.0.0.121 \"docker logs chorequest 2>&1 | head -20\")",
+      "Bash(ssh jordan@10.0.0.121 \"mkdir -p /opt/docker/docker_data/chorequest/uploads && docker logs chorequest 2>&1 | head -20\")"
     ]
   }
 }

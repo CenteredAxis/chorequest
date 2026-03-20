@@ -8,7 +8,7 @@ const STATUS_STYLE = {
   approved:    'border-green-500/40 bg-green-500/10',
 };
 
-export default function ChoreCard({ chore, onClaim, onJoin, onSubmit }) {
+export default function ChoreCard({ chore, narrative, onClaim, onJoin, onSubmit }) {
   const stars = DIFFICULTY_STARS[chore.difficulty] ?? '⭐';
   const style = STATUS_STYLE[chore.status] ?? STATUS_STYLE.open;
 
@@ -18,7 +18,9 @@ export default function ChoreCard({ chore, onClaim, onJoin, onSubmit }) {
         <span className="text-3xl">{chore.icon_emoji ?? '📋'}</span>
         <div className="flex-1 min-w-0">
           <p className="text-white font-bold truncate">{chore.title}</p>
-          {chore.description && (
+          {narrative ? (
+            <p className="text-yellow-200/70 text-xs mt-0.5 italic line-clamp-3">{narrative}</p>
+          ) : chore.description && (
             <p className="text-white/50 text-xs mt-0.5 line-clamp-2">{chore.description}</p>
           )}
           <div className="flex items-center gap-3 mt-2 text-xs text-white/60">
