@@ -65,10 +65,11 @@ export default function ParentKids() {
     }
   };
 
-  const handleToggleActive = async (kidId) => {
+  const handleDeleteKid = async (kid) => {
+    if (!confirm(`Remove ${kid.name}? This will hide them from the app.`)) return;
     try {
-      await kidsApi.toggle(kidId);
-      toast.success('Kid status updated');
+      await kidsApi.delete(kid.id);
+      toast.success(`${kid.name} removed`);
       refetch();
     } catch (err) {
       toast.error(err.message);
@@ -261,14 +262,10 @@ export default function ParentKids() {
                       ✏️ Edit
                     </button>
                     <button
-                      onClick={() => handleToggleActive(kid.id)}
-                      className={`flex-1 py-2 rounded-lg font-bold text-sm transition-all ${
-                        kid.is_active
-                          ? 'bg-green-600/50 hover:bg-green-600/70 text-white'
-                          : 'bg-gray-600/50 hover:bg-gray-600/70 text-white/60'
-                      }`}
+                      onClick={() => handleDeleteKid(kid)}
+                      className="flex-1 py-2 rounded-lg bg-red-600/50 hover:bg-red-600/70 text-white font-bold text-sm transition-all"
                     >
-                      {kid.is_active ? '✓ Active' : '⊘ Inactive'}
+                      Remove
                     </button>
                   </div>
                 </div>

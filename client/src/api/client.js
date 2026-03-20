@@ -40,12 +40,12 @@ export const kids = {
     body: JSON.stringify(data),
   }).then(handleResponse),
   update: (kidId, data) => fetch(`${BASE_URL}/kids/${kidId}`, {
-    method: 'PATCH',
+    method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   }).then(handleResponse),
-  toggle: (kidId) => fetch(`${BASE_URL}/kids/${kidId}/toggle`, {
-    method: 'POST',
+  delete: (kidId) => fetch(`${BASE_URL}/kids/${kidId}`, {
+    method: 'DELETE',
   }).then(handleResponse),
 };
 
