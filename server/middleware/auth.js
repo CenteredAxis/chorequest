@@ -12,4 +12,11 @@ function requireChild(req, res, next) {
   next();
 }
 
-module.exports = { requireParent, requireChild };
+function requireAuth(req, res, next) {
+  if (!req.session.parentId && !req.session.kidId) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  next();
+}
+
+module.exports = { requireParent, requireChild, requireAuth };
