@@ -2,7 +2,7 @@
 
 const express = require('express');
 const { requireChild } = require('../middleware/auth');
-const upload = require('../middleware/upload');
+const { upload } = require('../middleware/upload');
 
 const router = express.Router();
 
