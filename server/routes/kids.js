@@ -15,6 +15,15 @@ router.get('/', requireParent, (req, res) => {
   res.json(kids);
 });
 
+// GET /api/kids/all/list — public list for kiosk avatar selector (no parent auth needed)
+router.get('/all/list', (req, res) => {
+  const db = getDb();
+  const kids = db.prepare(
+    'SELECT id, name, avatar_emoji, coins, level, streak FROM kids WHERE is_active = 1 ORDER BY name'
+  ).all();
+  res.json(kids);
+});
+
 // GET /api/kids/:id — single kid with badge count
 router.get('/:id', requireParent, (req, res) => {
   const db = getDb();
@@ -105,17 +114,6 @@ router.get('/:id/badges', requireParent, (req, res) => {
   `).all(req.params.id);
 
   res.json(badges);
-});
-
-// GET /api/kids/all/list — public list for kiosk avatar selector (no parent auth needed)
-router.get('/all/list', (req, res) => {
-  // Find parent_id — for simplicity, return all active kids across all parents
-  // In a single-family setup this is fine
-  const db = getDb();
-  const kids = db.prepare(
-    'SELECT id, name, avatar_emoji, level FROM kids WHERE is_active = 1 ORDER BY name'
-  ).all();
-  res.json(kids);
 });
 
 module.exports = router;
