@@ -7,12 +7,23 @@ const { applyXP } = require('../services/levelService');
 const { updateStreak } = require('../services/streakService');
 const { checkAndAwardBadges } = require('../services/badgeService');
 
-// GET /api/chores - list chores for parent
+// GET /api/chores - list chores for parent (with assigned kids)
 router.get('/', requireParent, (req, res) => {
   const db = getDb();
   const chores = db
     .prepare('SELECT * FROM chores WHERE parent_id = ? ORDER BY created_at DESC')
     .all(req.session.parentId);
+
+  // Attach assigned kids to each chore
+  const assignStmt = db.prepare(
+    `SELECT DISTINCT k.id, k.name, k.avatar_emoji
+     FROM chore_assignments ca
+     JOIN kids k ON ca.kid_id = k.id
+     WHERE ca.chore_id = ?`
+  );
+  for (const chore of chores) {
+    chore.assigned_kids = assignStmt.all(chore.id);
+  }
 
   res.json(chores);
 });

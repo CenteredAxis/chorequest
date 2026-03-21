@@ -67,7 +67,7 @@ export default function ParentChores() {
     setRecurrenceFreq(freq);
     setRecurrenceDays(days);
     setIsOpen(chore.is_open === 1);
-    setAssignedKids([]); // assignments aren't returned in list, start empty
+    setAssignedKids(chore.assigned_kids ? chore.assigned_kids.map(k => k.id) : []);
     setDoTogether(chore.do_together === 1);
     setRequirePhoto(chore.require_photo === 1);
     setShowForm(true);
@@ -180,44 +180,48 @@ export default function ParentChores() {
             {editingId ? '✏️ Edit Chore' : 'Add New Chore'}
           </h3>
 
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Chore title"
-            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:border-yellow-400/40"
-            disabled={submitting}
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-3">
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Chore title"
+                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:border-yellow-400/40"
+                disabled={submitting}
+              />
 
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Description (optional)"
-            rows={2}
-            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:border-yellow-400/40 resize-none"
-            disabled={submitting}
-          />
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Description (optional)"
+                rows={2}
+                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:border-yellow-400/40 resize-none"
+                disabled={submitting}
+              />
 
-          <div className="grid grid-cols-2 gap-3">
-            <input
-              type="number"
-              value={coinReward}
-              onChange={(e) => setCoinReward(e.target.value)}
-              placeholder="Coin reward"
-              min="0"
-              className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:border-yellow-400/40"
-              disabled={submitting}
-            />
-            <input
-              type="number"
-              value={xpReward}
-              onChange={(e) => setXpReward(e.target.value)}
-              placeholder="XP reward"
-              min="0"
-              className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:border-yellow-400/40"
-              disabled={submitting}
-            />
-          </div>
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  type="number"
+                  value={coinReward}
+                  onChange={(e) => setCoinReward(e.target.value)}
+                  placeholder="Coin reward"
+                  min="0"
+                  className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:border-yellow-400/40"
+                  disabled={submitting}
+                />
+                <input
+                  type="number"
+                  value={xpReward}
+                  onChange={(e) => setXpReward(e.target.value)}
+                  placeholder="XP reward"
+                  min="0"
+                  className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:border-yellow-400/40"
+                  disabled={submitting}
+                />
+              </div>
+            </div>
+            <div className="space-y-3">
 
           <label className="flex items-center gap-2 text-white cursor-pointer">
             <input
@@ -350,6 +354,8 @@ export default function ParentChores() {
             />
             <span>Do-together eligible (kids can join)</span>
           </label>
+            </div>{/* close right column */}
+          </div>{/* close 2-col grid */}
 
           <div className="flex gap-2 pt-2">
             <button
@@ -391,45 +397,56 @@ export default function ParentChores() {
           )}
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
           {choreList.map(chore => (
-            <div key={chore.id} className="p-4 rounded-2xl bg-white/5 border border-white/10">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
-                  <div className="font-bold text-white text-lg">{chore.title}</div>
+            <div key={chore.id} className="p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col">
+              <div className="flex items-start justify-between mb-2">
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-white text-base truncate">{chore.title}</div>
                   {chore.description && (
-                    <div className="text-white/60 text-sm">{chore.description}</div>
+                    <div className="text-white/60 text-sm line-clamp-2">{chore.description}</div>
                   )}
                 </div>
-                <div className="text-right text-sm text-white/60">
+                <div className="text-right text-sm text-white/60 whitespace-nowrap ml-3">
                   🪙 {chore.coin_reward} · ⭐ {chore.xp_reward}
                 </div>
               </div>
 
-              <div className="flex gap-2 text-xs text-white/50 mb-3 flex-wrap">
+              <div className="flex gap-1.5 text-xs text-white/50 mb-2 flex-wrap">
                 {chore.is_recurring === 1 && (
-                  <span className="px-2 py-1 rounded-full bg-white/10">
+                  <span className="px-2 py-0.5 rounded-full bg-white/10">
                     🔄 {chore.cron_schedule === 'weekdays' ? 'Weekdays'
                       : chore.cron_schedule === 'weekends' ? 'Weekends'
-                      : chore.cron_schedule?.startsWith('weekly:') ? `Weekly`
+                      : chore.cron_schedule?.startsWith('weekly:') ? 'Weekly'
                       : 'Daily'}
                   </span>
                 )}
-                {chore.is_open === 1 && <span className="px-2 py-1 rounded-full bg-white/10">🌐 Open</span>}
-                {chore.do_together === 1 && <span className="px-2 py-1 rounded-full bg-white/10">🤝 Do-Together</span>}
-                {chore.require_photo === 1 && <span className="px-2 py-1 rounded-full bg-white/10">📷 Proof</span>}
+                {chore.is_open === 1 && <span className="px-2 py-0.5 rounded-full bg-white/10">🌐 Open</span>}
+                {chore.do_together === 1 && <span className="px-2 py-0.5 rounded-full bg-white/10">🤝 Together</span>}
+                {chore.require_photo === 1 && <span className="px-2 py-0.5 rounded-full bg-white/10">📷 Proof</span>}
               </div>
 
-              <div className="flex gap-2">
+              {/* Assigned kids badges */}
+              {chore.assigned_kids && chore.assigned_kids.length > 0 && (
+                <div className="flex gap-1.5 mb-3 flex-wrap">
+                  {chore.assigned_kids.map(kid => (
+                    <span key={kid.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-500/20 border border-purple-400/30 text-purple-200 text-xs">
+                      {kid.avatar_emoji} {kid.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex gap-2 mt-auto pt-2">
                 <button
                   onClick={() => startEdit(chore)}
-                  className="flex-1 py-2 rounded-lg bg-blue-500/30 hover:bg-blue-500/50 text-blue-200 font-bold text-sm transition-all"
+                  className="flex-1 py-1.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/40 text-blue-200 font-bold text-xs transition-all"
                 >
                   ✏️ Edit
                 </button>
                 <button
                   onClick={() => handleDeleteChore(chore.id)}
-                  className="flex-1 py-2 rounded-lg bg-red-600/30 hover:bg-red-600/50 text-red-200 font-bold text-sm transition-all"
+                  className="flex-1 py-1.5 rounded-lg bg-red-600/20 hover:bg-red-600/40 text-red-200 font-bold text-xs transition-all"
                 >
                   🗑️ Delete
                 </button>
