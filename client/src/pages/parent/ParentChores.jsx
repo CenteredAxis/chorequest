@@ -16,7 +16,8 @@ export default function ParentChores() {
   const [coinReward, setCoinReward] = useState('');
   const [xpReward, setXpReward] = useState('');
   const [isRecurring, setIsRecurring] = useState(false);
-  const [cronSchedule, setCronSchedule] = useState('');
+  const [recurrenceFreq, setRecurrenceFreq] = useState('daily');
+  const [recurrenceDays, setRecurrenceDays] = useState([]);
   const [isOpen, setIsOpen] = useState(true);
   const [assignedKids, setAssignedKids] = useState([]);
   const [doTogether, setDoTogether] = useState(false);
@@ -34,7 +35,8 @@ export default function ParentChores() {
     setCoinReward('');
     setXpReward('');
     setIsRecurring(false);
-    setCronSchedule('');
+    setRecurrenceFreq('daily');
+    setRecurrenceDays([]);
     setIsOpen(true);
     setAssignedKids([]);
     setDoTogether(false);
@@ -56,7 +58,8 @@ export default function ParentChores() {
         coin_reward: parseInt(coinReward),
         xp_reward: parseInt(xpReward),
         is_recurring: isRecurring,
-        cron_schedule: isRecurring ? cronSchedule : null,
+        recurrence_freq: isRecurring ? recurrenceFreq : null,
+        recurrence_days: isRecurring && recurrenceFreq === 'weekly' ? recurrenceDays : null,
         is_open: isOpen,
         assigned_kid_ids: assignedKids,
         do_together: doTogether,
@@ -199,14 +202,70 @@ export default function ParentChores() {
           </label>
 
           {isRecurring && (
-            <input
-              type="text"
-              value={cronSchedule}
-              onChange={(e) => setCronSchedule(e.target.value)}
-              placeholder="Cron schedule (e.g., 0 8 * * *)"
-              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:border-yellow-400/40 text-sm"
-              disabled={submitting}
-            />
+            <div className="space-y-3 pl-6 border-l-2 border-yellow-400/30">
+              <div>
+                <label className="block text-white/70 text-xs font-medium mb-1.5">How often?</label>
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    { value: 'daily', label: '📅 Every Day' },
+                    { value: 'weekdays', label: '🏫 Weekdays' },
+                    { value: 'weekends', label: '🎮 Weekends' },
+                    { value: 'weekly', label: '📆 Pick Days' },
+                  ].map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => { setRecurrenceFreq(opt.value); if (opt.value !== 'weekly') setRecurrenceDays([]); }}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                        recurrenceFreq === opt.value
+                          ? 'bg-yellow-400/20 border-yellow-400/50 text-yellow-300 border'
+                          : 'bg-white/5 border border-white/10 text-white/60 hover:bg-white/10'
+                      }`}
+                      disabled={submitting}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {recurrenceFreq === 'weekly' && (
+                <div>
+                  <label className="block text-white/70 text-xs font-medium mb-1.5">Which days?</label>
+                  <div className="flex gap-1.5">
+                    {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((day, i) => (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => {
+                          setRecurrenceDays(prev =>
+                            prev.includes(i) ? prev.filter(d => d !== i) : [...prev, i].sort()
+                          );
+                        }}
+                        className={`w-10 h-10 rounded-lg text-xs font-bold transition-all ${
+                          recurrenceDays.includes(i)
+                            ? 'bg-yellow-400/20 border-yellow-400/50 text-yellow-300 border'
+                            : 'bg-white/5 border border-white/10 text-white/40 hover:bg-white/10'
+                        }`}
+                        disabled={submitting}
+                      >
+                        {day}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <p className="text-white/30 text-xs">
+                {recurrenceFreq === 'daily' && 'Resets every day at midnight'}
+                {recurrenceFreq === 'weekdays' && 'Resets Monday through Friday'}
+                {recurrenceFreq === 'weekends' && 'Resets Saturday and Sunday'}
+                {recurrenceFreq === 'weekly' && recurrenceDays.length === 0 && 'Pick at least one day'}
+                {recurrenceFreq === 'weekly' && recurrenceDays.length > 0 &&
+                  `Resets on ${recurrenceDays.map(d => ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d]).join(', ')}`
+                }
+              </p>
+            </div>
           )}
 
           <label className="flex items-center gap-2 text-white cursor-pointer">
@@ -303,7 +362,14 @@ export default function ParentChores() {
               </div>
 
               <div className="flex gap-2 text-xs text-white/50 mb-3 flex-wrap">
-                {chore.is_recurring && <span className="px-2 py-1 rounded-full bg-white/10">🔄 Recurring</span>}
+                {chore.is_recurring === 1 && (
+                  <span className="px-2 py-1 rounded-full bg-white/10">
+                    🔄 {chore.cron_schedule === 'weekdays' ? 'Weekdays'
+                      : chore.cron_schedule === 'weekends' ? 'Weekends'
+                      : chore.cron_schedule?.startsWith('weekly:') ? `Weekly`
+                      : 'Daily'}
+                  </span>
+                )}
                 {chore.is_open && <span className="px-2 py-1 rounded-full bg-white/10">🌐 Open</span>}
                 {chore.do_together && <span className="px-2 py-1 rounded-full bg-white/10">🤝 Do-Together</span>}
                 {chore.requires_proof && <span className="px-2 py-1 rounded-full bg-white/10">📷 Proof</span>}

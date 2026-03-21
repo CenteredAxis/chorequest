@@ -17,10 +17,21 @@ router.get('/', requireParent, (req, res) => {
   res.json(chores);
 });
 
+// Helper: convert friendly recurrence fields to cron_schedule string
+function buildScheduleString(recurrence_freq, recurrence_days) {
+  if (!recurrence_freq) return null;
+  if (recurrence_freq === 'weekly' && Array.isArray(recurrence_days) && recurrence_days.length > 0) {
+    return `weekly:${recurrence_days.join(',')}`;
+  }
+  return recurrence_freq; // 'daily', 'weekdays', 'weekends'
+}
+
 // POST /api/chores - create chore
 router.post('/', requireParent, (req, res) => {
-  const { title, description, coin_reward, xp_reward, is_recurring, cron_schedule, is_open, do_together, do_together_bonus, require_photo, kids } = req.body;
+  const { title, description, coin_reward, xp_reward, is_recurring, recurrence_freq, recurrence_days, cron_schedule, is_open, do_together, do_together_bonus, require_photo, kids } = req.body;
   const db = getDb();
+
+  const schedule = is_recurring ? (buildScheduleString(recurrence_freq, recurrence_days) || cron_schedule || 'daily') : null;
 
   try {
     const stmt = db.prepare(
@@ -33,7 +44,7 @@ router.post('/', requireParent, (req, res) => {
       coin_reward || 10,
       xp_reward || 50,
       is_recurring ? 1 : 0,
-      cron_schedule || null,
+      schedule,
       is_open ? 1 : 0,
       do_together ? 1 : 0,
       do_together_bonus || 5,
@@ -58,8 +69,10 @@ router.post('/', requireParent, (req, res) => {
 
 // PUT /api/chores/:id - update chore
 router.put('/:id', requireParent, (req, res) => {
-  const { title, description, coin_reward, xp_reward, is_recurring, cron_schedule, is_open, do_together, do_together_bonus, require_photo, kids } = req.body;
+  const { title, description, coin_reward, xp_reward, is_recurring, recurrence_freq, recurrence_days, cron_schedule, is_open, do_together, do_together_bonus, require_photo, kids } = req.body;
   const db = getDb();
+
+  const schedule = is_recurring ? (buildScheduleString(recurrence_freq, recurrence_days) || cron_schedule || 'daily') : null;
 
   try {
     db.prepare(
@@ -70,7 +83,7 @@ router.put('/:id', requireParent, (req, res) => {
       coin_reward || 10,
       xp_reward || 50,
       is_recurring ? 1 : 0,
-      cron_schedule || null,
+      schedule,
       is_open ? 1 : 0,
       do_together ? 1 : 0,
       do_together_bonus || 5,
