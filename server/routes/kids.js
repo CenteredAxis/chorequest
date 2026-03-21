@@ -34,7 +34,7 @@ router.get('/:id', requireParent, (req, res) => {
   if (!kid) return res.status(404).json({ error: 'Child not found' });
 
   const badgeCount = db.prepare('SELECT COUNT(*) as cnt FROM kid_badges WHERE kid_id = ?').get(kid.id).cnt;
-  const completedCount = db.prepare("SELECT COUNT(*) as cnt FROM chore_instances WHERE kid_id = ? AND status = 'approved'").get(kid.id).cnt;
+  const completedCount = db.prepare("SELECT COUNT(*) as cnt FROM completions WHERE kid_id = ? AND status = 'approved'").get(kid.id).cnt;
 
   res.json({ ...kid, badgeCount, completedCount });
 });

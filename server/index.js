@@ -59,10 +59,14 @@ seed();
 // Start cron jobs
 startCronJobs(db);
 
+// Completions routes (mounted at /api/completions AND /api/chores/completions for compat)
+const completionsRoutes = require('./routes/completions');
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/kids', kidsRoutes);
 app.use('/api/chores', choresRoutes);
+app.use('/api/completions', completionsRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/shop', shopRoutes);
 app.use('/api/badges', badgesRoutes);

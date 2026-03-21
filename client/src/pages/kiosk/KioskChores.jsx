@@ -86,7 +86,7 @@ export default function KioskChores() {
         const res = await uploadProof(photo);
         proof_photo_url = res.url;
       }
-      await choresApi.submit(submitChore.id, { note, proof_photo_url });
+      await choresApi.submit(submitChore.chore_id || submitChore.id, { notes: note, proof_photo_url });
       toast.success('Quest submitted! Waiting for approval.');
       setSubmitChore(null);
       refetchAll();
@@ -159,7 +159,7 @@ export default function KioskChores() {
       <QuestModal
         open={!!submitChore}
         onClose={() => setSubmitChore(null)}
-        title={submitChore ? `Submit: ${submitChore.chore_title}` : ''}
+        title={submitChore ? `Submit: ${submitChore.chore_title || submitChore.title}` : ''}
       >
         {submitChore && (
           <div className="space-y-4">
@@ -167,7 +167,7 @@ export default function KioskChores() {
               🪙 +{submitChore.coin_reward} &nbsp;·&nbsp; ⭐ +{submitChore.xp_reward} XP
             </div>
 
-            {submitChore.requires_proof && (
+            {submitChore.require_photo && (
               <div>
                 <label className="block text-white/70 text-sm font-medium mb-2">
                   📷 Photo proof required *
@@ -208,7 +208,7 @@ export default function KioskChores() {
 
             <button
               onClick={handleSubmit}
-              disabled={submitting || (submitChore.requires_proof && !photo)}
+              disabled={submitting || (submitChore.require_photo && !photo)}
               className="w-full py-3.5 rounded-2xl font-black text-black font-quest text-lg transition-all active:scale-95 disabled:opacity-40"
               style={{ background: 'linear-gradient(135deg, #fbbf24, #f59e0b)' }}
             >

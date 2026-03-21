@@ -19,7 +19,7 @@ router.get('/', (req, res) => {
       k.level,
       k.streak,
       COUNT(kb.badge_id) as badge_count,
-      (SELECT COUNT(*) FROM chore_instances WHERE kid_id = k.id AND status = 'approved') as chores_done
+      (SELECT COUNT(*) FROM completions WHERE kid_id = k.id AND status = 'approved') as chores_done
     FROM kids k
     LEFT JOIN kid_badges kb ON kb.kid_id = k.id
     WHERE k.is_active = 1

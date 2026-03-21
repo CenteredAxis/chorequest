@@ -39,10 +39,11 @@ function buildScheduleString(recurrence_freq, recurrence_days) {
 
 // POST /api/chores - create chore
 router.post('/', requireParent, (req, res) => {
-  const { title, description, coin_reward, xp_reward, is_recurring, recurrence_freq, recurrence_days, cron_schedule, is_open, do_together, do_together_bonus, require_photo, kids } = req.body;
+  const { title, description, coin_reward, xp_reward, is_recurring, recurrence_freq, recurrence_days, cron_schedule, is_open, do_together, do_together_bonus, require_photo, kids, assigned_kid_ids } = req.body;
   const db = getDb();
 
   const schedule = is_recurring ? (buildScheduleString(recurrence_freq, recurrence_days) || cron_schedule || 'daily') : null;
+  const kidIds = kids || assigned_kid_ids || [];
 
   try {
     const stmt = db.prepare(
@@ -65,9 +66,9 @@ router.post('/', requireParent, (req, res) => {
     const choreId = result.lastInsertRowid;
 
     // Create assignments for selected kids
-    if (kids && Array.isArray(kids)) {
+    if (Array.isArray(kidIds) && kidIds.length > 0) {
       const assignStmt = db.prepare('INSERT INTO chore_assignments (chore_id, kid_id) VALUES (?, ?)');
-      for (const kidId of kids) {
+      for (const kidId of kidIds) {
         assignStmt.run(choreId, kidId);
       }
     }
@@ -80,10 +81,11 @@ router.post('/', requireParent, (req, res) => {
 
 // PUT /api/chores/:id - update chore
 router.put('/:id', requireParent, (req, res) => {
-  const { title, description, coin_reward, xp_reward, is_recurring, recurrence_freq, recurrence_days, cron_schedule, is_open, do_together, do_together_bonus, require_photo, kids } = req.body;
+  const { title, description, coin_reward, xp_reward, is_recurring, recurrence_freq, recurrence_days, cron_schedule, is_open, do_together, do_together_bonus, require_photo, kids, assigned_kid_ids } = req.body;
   const db = getDb();
 
   const schedule = is_recurring ? (buildScheduleString(recurrence_freq, recurrence_days) || cron_schedule || 'daily') : null;
+  const kidIds = kids || assigned_kid_ids;
 
   try {
     db.prepare(
@@ -104,10 +106,10 @@ router.put('/:id', requireParent, (req, res) => {
     );
 
     // Update assignments if provided
-    if (kids && Array.isArray(kids)) {
+    if (Array.isArray(kidIds)) {
       db.prepare('DELETE FROM chore_assignments WHERE chore_id = ?').run(req.params.id);
       const assignStmt = db.prepare('INSERT INTO chore_assignments (chore_id, kid_id) VALUES (?, ?)');
-      for (const kidId of kids) {
+      for (const kidId of kidIds) {
         assignStmt.run(req.params.id, kidId);
       }
     }
@@ -140,7 +142,7 @@ router.delete('/:id', requireParent, (req, res) => {
   }
 });
 
-// GET /api/chores/kid - list chores for current kid
+// GET /api/chores/kid - list chores for current kid (legacy)
 router.get('/kid', requireChild, (req, res) => {
   const db = getDb();
 
@@ -157,6 +159,84 @@ router.get('/kid', requireChild, (req, res) => {
   );
 
   res.json(allChores);
+});
+
+// GET /api/chores/my-instances - kid's assigned chores (not yet completed today)
+router.get('/my-instances', requireChild, (req, res) => {
+  const db = getDb();
+  const kidId = req.session.kidId;
+
+  const chores = db.prepare(`
+    SELECT DISTINCT c.*, c.id as chore_id, c.title as chore_title
+    FROM chores c
+    JOIN chore_assignments ca ON c.id = ca.chore_id
+    WHERE ca.kid_id = ?
+    AND c.id NOT IN (
+      SELECT chore_id FROM completions
+      WHERE kid_id = ? AND status IN ('pending', 'approved')
+      AND date(submitted_at) = date('now')
+    )
+  `).all(kidId, kidId);
+
+  res.json(chores.map(c => ({ ...c, status: 'available' })));
+});
+
+// GET /api/chores/open-instances - open chores available to any kid
+router.get('/open-instances', requireChild, (req, res) => {
+  const db = getDb();
+  const kidId = req.session.kidId;
+
+  const chores = db.prepare(`
+    SELECT c.*, c.id as chore_id, c.title as chore_title
+    FROM chores c
+    WHERE c.is_open = 1
+    AND c.id NOT IN (
+      SELECT chore_id FROM chore_assignments WHERE kid_id = ?
+    )
+    AND c.id NOT IN (
+      SELECT chore_id FROM completions
+      WHERE kid_id = ? AND status IN ('pending', 'approved')
+      AND date(submitted_at) = date('now')
+    )
+  `).all(kidId, kidId);
+
+  res.json(chores.map(c => ({ ...c, status: 'open' })));
+});
+
+// GET /api/chores/completed - kid's completed chores
+router.get('/completed', requireChild, (req, res) => {
+  const db = getDb();
+  const kidId = req.session.kidId;
+
+  const chores = db.prepare(`
+    SELECT c.*, c.id as chore_id, c.title as chore_title,
+           comp.status, comp.submitted_at, comp.reviewed_at
+    FROM completions comp
+    JOIN chores c ON c.id = comp.chore_id
+    WHERE comp.kid_id = ?
+    ORDER BY comp.submitted_at DESC
+    LIMIT 50
+  `).all(kidId);
+
+  res.json(chores);
+});
+
+// GET /api/chores/pending - parent's pending completions (alias for completions/pending)
+router.get('/pending', requireParent, (req, res) => {
+  const db = getDb();
+
+  const pending = db
+    .prepare(
+      `SELECT comp.*, c.title as chore_title, c.parent_id, k.name as kid_name, k.avatar_emoji
+       FROM completions comp
+       JOIN chores c ON comp.chore_id = c.id
+       JOIN kids k ON comp.kid_id = k.id
+       WHERE c.parent_id = ? AND comp.status = 'pending'
+       ORDER BY comp.submitted_at DESC`
+    )
+    .all(req.session.parentId);
+
+  res.json(pending);
 });
 
 // POST /api/chores/:id/submit - kid submits completion
