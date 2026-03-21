@@ -57,7 +57,7 @@ export const chores = {
     body: JSON.stringify(data),
   }).then(handleResponse),
   update: (choreId, data) => fetch(`${BASE_URL}/chores/${choreId}`, {
-    method: 'PATCH',
+    method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   }).then(handleResponse),

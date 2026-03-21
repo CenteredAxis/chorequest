@@ -5,6 +5,18 @@ import { useToast } from '../../components/ui/Toast.jsx';
 import { QuestLoadingScreen } from '../../components/ui/Spinner.jsx';
 import { QuestModal } from '../../components/ui/Modal.jsx';
 
+// Parse stored cron_schedule back into freq + days
+function parseSchedule(cronSchedule) {
+  if (!cronSchedule || cronSchedule === 'daily') return { freq: 'daily', days: [] };
+  if (cronSchedule === 'weekdays') return { freq: 'weekdays', days: [] };
+  if (cronSchedule === 'weekends') return { freq: 'weekends', days: [] };
+  if (cronSchedule.startsWith('weekly:')) {
+    const days = cronSchedule.replace('weekly:', '').split(',').map(Number);
+    return { freq: 'weekly', days };
+  }
+  return { freq: 'daily', days: [] };
+}
+
 export default function ParentChores() {
   const toast = useToast();
   const [showForm, setShowForm] = useState(false);
@@ -44,7 +56,24 @@ export default function ParentChores() {
     setEditingId(null);
   };
 
-  const handleAddChore = async () => {
+  const startEdit = (chore) => {
+    setEditingId(chore.id);
+    setTitle(chore.title || '');
+    setDescription(chore.description || '');
+    setCoinReward(String(chore.coin_reward || ''));
+    setXpReward(String(chore.xp_reward || ''));
+    setIsRecurring(chore.is_recurring === 1);
+    const { freq, days } = parseSchedule(chore.cron_schedule);
+    setRecurrenceFreq(freq);
+    setRecurrenceDays(days);
+    setIsOpen(chore.is_open === 1);
+    setAssignedKids([]); // assignments aren't returned in list, start empty
+    setDoTogether(chore.do_together === 1);
+    setRequirePhoto(chore.require_photo === 1);
+    setShowForm(true);
+  };
+
+  const handleSubmit = async () => {
     if (!title || !coinReward || !xpReward) {
       toast.error('Title, coins, and XP required');
       return;
@@ -52,7 +81,7 @@ export default function ParentChores() {
 
     setSubmitting(true);
     try {
-      await choresApi.create({
+      const data = {
         title,
         description,
         coin_reward: parseInt(coinReward),
@@ -63,9 +92,16 @@ export default function ParentChores() {
         is_open: isOpen,
         assigned_kid_ids: assignedKids,
         do_together: doTogether,
-        requires_proof: requirePhoto,
-      });
-      toast.success('Chore created!');
+        require_photo: requirePhoto,
+      };
+
+      if (editingId) {
+        await choresApi.update(editingId, data);
+        toast.success('Chore updated!');
+      } else {
+        await choresApi.create(data);
+        toast.success('Chore created!');
+      }
       resetForm();
       setShowForm(false);
       refetchChores();
@@ -137,10 +173,12 @@ export default function ParentChores() {
         )}
       </div>
 
-      {/* Add form */}
+      {/* Add/Edit form */}
       {showForm && (
         <div className="p-4 rounded-2xl bg-white/5 border border-white/10 mb-6 space-y-4">
-          <h3 className="text-lg font-bold text-white">Add New Chore</h3>
+          <h3 className="text-lg font-bold text-white">
+            {editingId ? '✏️ Edit Chore' : 'Add New Chore'}
+          </h3>
 
           <input
             type="text"
@@ -315,11 +353,18 @@ export default function ParentChores() {
 
           <div className="flex gap-2 pt-2">
             <button
-              onClick={handleAddChore}
+              onClick={handleSubmit}
               disabled={submitting}
-              className="flex-1 py-2.5 rounded-lg bg-green-500 hover:bg-green-600 text-white font-bold transition-all disabled:opacity-50"
+              className={`flex-1 py-2.5 rounded-lg text-white font-bold transition-all disabled:opacity-50 ${
+                editingId
+                  ? 'bg-blue-500 hover:bg-blue-600'
+                  : 'bg-green-500 hover:bg-green-600'
+              }`}
             >
-              {submitting ? 'Creating...' : 'Create Chore'}
+              {submitting
+                ? (editingId ? 'Saving...' : 'Creating...')
+                : (editingId ? '💾 Save Changes' : 'Create Chore')
+              }
             </button>
             <button
               onClick={() => { setShowForm(false); resetForm(); }}
@@ -370,15 +415,21 @@ export default function ParentChores() {
                       : 'Daily'}
                   </span>
                 )}
-                {chore.is_open && <span className="px-2 py-1 rounded-full bg-white/10">🌐 Open</span>}
-                {chore.do_together && <span className="px-2 py-1 rounded-full bg-white/10">🤝 Do-Together</span>}
-                {chore.requires_proof && <span className="px-2 py-1 rounded-full bg-white/10">📷 Proof</span>}
+                {chore.is_open === 1 && <span className="px-2 py-1 rounded-full bg-white/10">🌐 Open</span>}
+                {chore.do_together === 1 && <span className="px-2 py-1 rounded-full bg-white/10">🤝 Do-Together</span>}
+                {chore.require_photo === 1 && <span className="px-2 py-1 rounded-full bg-white/10">📷 Proof</span>}
               </div>
 
               <div className="flex gap-2">
                 <button
+                  onClick={() => startEdit(chore)}
+                  className="flex-1 py-2 rounded-lg bg-blue-500/30 hover:bg-blue-500/50 text-blue-200 font-bold text-sm transition-all"
+                >
+                  ✏️ Edit
+                </button>
+                <button
                   onClick={() => handleDeleteChore(chore.id)}
-                  className="flex-1 py-2 rounded-lg bg-red-600/50 hover:bg-red-600 text-white font-bold text-sm transition-all"
+                  className="flex-1 py-2 rounded-lg bg-red-600/30 hover:bg-red-600/50 text-red-200 font-bold text-sm transition-all"
                 >
                   🗑️ Delete
                 </button>
