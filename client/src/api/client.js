@@ -139,7 +139,7 @@ export const notifications = {
 export const settings = {
   get: () => fetch(`${BASE_URL}/settings`).then(handleResponse),
   update: (data) => fetch(`${BASE_URL}/settings`, {
-    method: 'PATCH',
+    method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   }).then(handleResponse),
