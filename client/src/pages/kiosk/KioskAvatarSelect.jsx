@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { kids as kidsApi } from '../../api/client.js';
-import PinPad from '../../components/kiosk/PinPad.jsx';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import { QuestLoadingScreen } from '../../components/ui/Spinner.jsx';
 
@@ -20,6 +19,7 @@ export default function KioskAvatarSelect() {
   const [loading, setLoading] = useState(true);
   const [selectedKid, setSelectedKid] = useState(null);
   const [pinError, setPinError] = useState('');
+  const [pinDigits, setPinDigits] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -43,20 +43,37 @@ export default function KioskAvatarSelect() {
 
   const handleSelectKid = (kid) => {
     setPinError('');
+    setPinDigits(0);
+    pinRef.current = '';
     setSelectedKid(kid);
   };
 
-  const handlePin = useCallback(async (pin) => {
+  const pinRef = React.useRef('');
+
+  const handleButton = useCallback((val) => {
     if (submitting) return;
-    setSubmitting(true);
-    setPinError('');
-    try {
-      await childLogin(selectedKid.id, pin);
-      navigate('/kiosk/dashboard', { replace: true });
-    } catch {
-      setPinError('Wrong PIN, try again!');
-    } finally {
-      setSubmitting(false);
+    if (val === '⌫') {
+      pinRef.current = pinRef.current.slice(0, -1);
+      setPinDigits(pinRef.current.length);
+      return;
+    }
+    if (val === '' || pinRef.current.length >= 4) return;
+
+    pinRef.current += val;
+    setPinDigits(pinRef.current.length);
+
+    if (pinRef.current.length === 4) {
+      const pin = pinRef.current;
+      pinRef.current = '';
+      setSubmitting(true);
+      setPinError('');
+      childLogin(selectedKid.id, pin)
+        .then(() => navigate('/kiosk/dashboard', { replace: true }))
+        .catch(() => {
+          setPinError('Wrong PIN, try again!');
+          setPinDigits(0);
+        })
+        .finally(() => setSubmitting(false));
     }
   }, [selectedKid, childLogin, navigate, submitting]);
 
@@ -82,14 +99,60 @@ export default function KioskAvatarSelect() {
 
         {/* === PIN PAD VIEW === */}
         {selectedKid ? (
-          <div className="flex flex-col items-center justify-center py-8 w-full max-w-sm">
-            <PinPad
-              kidName={selectedKid.name}
-              kidEmoji={selectedKid.avatar_emoji}
-              onSubmit={handlePin}
-              onCancel={() => { setSelectedKid(null); setPinError(''); }}
-              error={pinError}
-            />
+          <div className="flex flex-col items-center justify-center py-8 w-full max-w-md">
+            <div className="text-center mb-8">
+              <div className="text-8xl mb-3 animate-bounce-in">{selectedKid.avatar_emoji}</div>
+              <p className="text-white font-bold text-3xl font-quest">{selectedKid.name}</p>
+              <p className="text-white/50 text-lg mt-2">Enter your PIN</p>
+            </div>
+
+            {/* PIN dots */}
+            <div className="flex gap-5 mb-8">
+              {[0,1,2,3].map(i => {
+                const filled = i < (pinDigits ?? 0);
+                return (
+                  <div
+                    key={i}
+                    className={`w-5 h-5 rounded-full border-2 transition-all duration-150 ${
+                      filled
+                        ? 'bg-yellow-400 border-yellow-400 scale-110'
+                        : 'bg-transparent border-white/30'
+                    }`}
+                  />
+                );
+              })}
+            </div>
+
+            {pinError && (
+              <p className="text-red-400 text-sm font-semibold animate-pulse mb-4">{pinError}</p>
+            )}
+
+            {/* Number pad — large for TV */}
+            <div className="grid grid-cols-3 gap-4 w-full max-w-xs">
+              {['1','2','3','4','5','6','7','8','9','','0','⌫'].map((btn, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleButton(btn)}
+                  disabled={btn === ''}
+                  className={`h-20 rounded-2xl text-2xl font-bold transition-all duration-100 active:scale-95 select-none
+                    ${btn === '' ? 'invisible' : ''}
+                    ${btn === '⌫'
+                      ? 'bg-white/10 text-white/60 hover:bg-white/20'
+                      : 'bg-white/10 text-white hover:bg-white/20 border border-white/10'
+                    }`}
+                  style={{ WebkitTapHighlightColor: 'transparent' }}
+                >
+                  {btn}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => { setSelectedKid(null); setPinError(''); setPinDigits(0); }}
+              className="text-white/40 hover:text-white/70 text-base transition-colors mt-6"
+            >
+              ← Back
+            </button>
           </div>
         ) : (
           <>
