@@ -1,6 +1,5 @@
 import React from 'react';
 
-const DIFFICULTY_STARS = { easy: '⭐', medium: '⭐⭐', hard: '⭐⭐⭐' };
 const STATUS_STYLE = {
   open:        'border-white/10 bg-white/5',
   claimed:     'border-yellow-500/40 bg-yellow-500/10',
@@ -8,8 +7,14 @@ const STATUS_STYLE = {
   approved:    'border-green-500/40 bg-green-500/10',
 };
 
+function getStars(xp) {
+  if (xp >= 25) return '⭐⭐⭐';
+  if (xp >= 12) return '⭐⭐';
+  return '⭐';
+}
+
 export default function ChoreCard({ chore, narrative, onClaim, onJoin, onSubmit }) {
-  const stars = DIFFICULTY_STARS[chore.difficulty] ?? '⭐';
+  const stars = getStars(chore.xp_reward || 0);
   const style = STATUS_STYLE[chore.status] ?? STATUS_STYLE.open;
 
   return (
