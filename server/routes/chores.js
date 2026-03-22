@@ -7,6 +7,23 @@ const { applyXP } = require('../services/levelService');
 const { updateStreak } = require('../services/streakService');
 const { checkAndAwardBadges } = require('../services/badgeService');
 
+// Time-aware sorting: chores matching current time-of-day period appear first
+function getTimePeriod() {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 12) return 'morning';
+  if (h >= 12 && h < 17) return 'afternoon';
+  return 'evening';
+}
+
+function sortByTimeRelevance(chores) {
+  const period = getTimePeriod();
+  return chores.sort((a, b) => {
+    const aMatch = a.time_of_day === period ? 0 : a.time_of_day === 'anytime' ? 1 : 2;
+    const bMatch = b.time_of_day === period ? 0 : b.time_of_day === 'anytime' ? 1 : 2;
+    return aMatch - bMatch;
+  });
+}
+
 // GET /api/chores - list chores for parent (with assigned kids)
 router.get('/', requireParent, (req, res) => {
   const db = getDb();
@@ -39,7 +56,7 @@ function buildScheduleString(recurrence_freq, recurrence_days) {
 
 // POST /api/chores - create chore
 router.post('/', requireParent, (req, res) => {
-  const { title, description, coin_reward, xp_reward, is_recurring, recurrence_freq, recurrence_days, cron_schedule, is_open, do_together, do_together_bonus, require_photo, kids, assigned_kid_ids } = req.body;
+  const { title, description, coin_reward, xp_reward, is_recurring, recurrence_freq, recurrence_days, cron_schedule, is_open, do_together, do_together_bonus, require_photo, time_of_day, kids, assigned_kid_ids } = req.body;
   const db = getDb();
 
   const schedule = is_recurring ? (buildScheduleString(recurrence_freq, recurrence_days) || cron_schedule || 'daily') : null;
@@ -47,7 +64,7 @@ router.post('/', requireParent, (req, res) => {
 
   try {
     const stmt = db.prepare(
-      'INSERT INTO chores (parent_id, title, description, coin_reward, xp_reward, is_recurring, cron_schedule, is_open, do_together, do_together_bonus, require_photo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO chores (parent_id, title, description, coin_reward, xp_reward, is_recurring, cron_schedule, is_open, do_together, do_together_bonus, require_photo, time_of_day) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     const result = stmt.run(
       req.session.parentId,
@@ -60,7 +77,8 @@ router.post('/', requireParent, (req, res) => {
       is_open ? 1 : 0,
       do_together ? 1 : 0,
       do_together_bonus || 5,
-      require_photo ? 1 : 0
+      require_photo ? 1 : 0,
+      time_of_day || 'anytime'
     );
 
     const choreId = result.lastInsertRowid;
@@ -81,7 +99,7 @@ router.post('/', requireParent, (req, res) => {
 
 // PUT /api/chores/:id - update chore
 router.put('/:id', requireParent, (req, res) => {
-  const { title, description, coin_reward, xp_reward, is_recurring, recurrence_freq, recurrence_days, cron_schedule, is_open, do_together, do_together_bonus, require_photo, kids, assigned_kid_ids } = req.body;
+  const { title, description, coin_reward, xp_reward, is_recurring, recurrence_freq, recurrence_days, cron_schedule, is_open, do_together, do_together_bonus, require_photo, time_of_day, kids, assigned_kid_ids } = req.body;
   const db = getDb();
 
   const schedule = is_recurring ? (buildScheduleString(recurrence_freq, recurrence_days) || cron_schedule || 'daily') : null;
@@ -89,7 +107,7 @@ router.put('/:id', requireParent, (req, res) => {
 
   try {
     db.prepare(
-      'UPDATE chores SET title = ?, description = ?, coin_reward = ?, xp_reward = ?, is_recurring = ?, cron_schedule = ?, is_open = ?, do_together = ?, do_together_bonus = ?, require_photo = ? WHERE id = ? AND parent_id = ?'
+      'UPDATE chores SET title = ?, description = ?, coin_reward = ?, xp_reward = ?, is_recurring = ?, cron_schedule = ?, is_open = ?, do_together = ?, do_together_bonus = ?, require_photo = ?, time_of_day = ? WHERE id = ? AND parent_id = ?'
     ).run(
       title,
       description || null,
@@ -101,6 +119,7 @@ router.put('/:id', requireParent, (req, res) => {
       do_together ? 1 : 0,
       do_together_bonus || 5,
       require_photo ? 1 : 0,
+      time_of_day || 'anytime',
       req.params.id,
       req.session.parentId
     );
@@ -178,7 +197,7 @@ router.get('/my-instances', requireChild, (req, res) => {
     )
   `).all(kidId, kidId);
 
-  res.json(chores.map(c => ({ ...c, status: 'available' })));
+  res.json(sortByTimeRelevance(chores).map(c => ({ ...c, status: 'available' })));
 });
 
 // GET /api/chores/open-instances - open chores available to any kid
@@ -200,7 +219,7 @@ router.get('/open-instances', requireChild, (req, res) => {
     )
   `).all(kidId);
 
-  res.json(chores.map(c => ({ ...c, status: 'open' })));
+  res.json(sortByTimeRelevance(chores).map(c => ({ ...c, status: 'open' })));
 });
 
 // GET /api/chores/completed - kid's completed chores

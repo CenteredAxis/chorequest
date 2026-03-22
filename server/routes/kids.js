@@ -33,9 +33,13 @@ router.get('/kiosk/board', (req, res) => {
     'SELECT id, name, avatar_emoji, coins, level, streak FROM kids WHERE is_active = 1 ORDER BY name'
   ).all();
 
-  // Per-kid: assigned chores not yet completed today
+  // Time-aware sorting
+  const h = new Date().getHours();
+  const period = h >= 5 && h < 12 ? 'morning' : h >= 12 && h < 17 ? 'afternoon' : 'evening';
+
+  // Per-kid: assigned chores not yet completed today, sorted by time relevance
   const choreStmt = db.prepare(`
-    SELECT c.title, c.coin_reward, ca.kid_id
+    SELECT c.title, c.coin_reward, c.time_of_day, ca.kid_id
     FROM chores c
     JOIN chore_assignments ca ON c.id = ca.chore_id
     WHERE ca.kid_id = ?
@@ -44,13 +48,15 @@ router.get('/kiosk/board', (req, res) => {
       WHERE kid_id = ? AND status IN ('pending', 'approved')
       AND date(submitted_at) = date('now')
     )
-    ORDER BY c.title
+    ORDER BY
+      CASE WHEN c.time_of_day = ? THEN 0 WHEN c.time_of_day = 'anytime' THEN 1 ELSE 2 END,
+      c.title
   `);
 
   for (const kid of kids) {
-    const chores = choreStmt.all(kid.id, kid.id);
+    const chores = choreStmt.all(kid.id, kid.id, period);
     kid.chore_count = chores.length;
-    kid.pending_chores = chores.slice(0, 3).map(c => ({ title: c.title, coin_reward: c.coin_reward }));
+    kid.pending_chores = chores.slice(0, 3).map(c => ({ title: c.title, coin_reward: c.coin_reward, time_of_day: c.time_of_day }));
   }
 
   // Open chores not completed today by anyone

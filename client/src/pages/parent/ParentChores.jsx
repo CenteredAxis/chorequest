@@ -34,6 +34,7 @@ export default function ParentChores() {
   const [assignedKids, setAssignedKids] = useState([]);
   const [doTogether, setDoTogether] = useState(false);
   const [requirePhoto, setRequirePhoto] = useState(false);
+  const [timeOfDay, setTimeOfDay] = useState('anytime');
   const [showSuggest, setShowSuggest] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
@@ -53,6 +54,7 @@ export default function ParentChores() {
     setAssignedKids([]);
     setDoTogether(false);
     setRequirePhoto(false);
+    setTimeOfDay('anytime');
     setEditingId(null);
   };
 
@@ -70,6 +72,7 @@ export default function ParentChores() {
     setAssignedKids(chore.assigned_kids ? chore.assigned_kids.map(k => k.id) : []);
     setDoTogether(chore.do_together === 1);
     setRequirePhoto(chore.require_photo === 1);
+    setTimeOfDay(chore.time_of_day || 'anytime');
     setShowForm(true);
   };
 
@@ -93,6 +96,7 @@ export default function ParentChores() {
         assigned_kid_ids: assignedKids,
         do_together: doTogether,
         require_photo: requirePhoto,
+        time_of_day: timeOfDay,
       };
 
       if (editingId) {
@@ -232,6 +236,32 @@ export default function ParentChores() {
             />
             <span>Requires photo proof</span>
           </label>
+
+          <div>
+            <label className="block text-white/70 text-xs font-medium mb-1.5">Best time of day</label>
+            <div className="flex gap-2 flex-wrap">
+              {[
+                { value: 'morning', label: '🌅 Morning' },
+                { value: 'afternoon', label: '☀️ Afternoon' },
+                { value: 'evening', label: '🌙 Evening' },
+                { value: 'anytime', label: '🕐 Anytime' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setTimeOfDay(opt.value)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    timeOfDay === opt.value
+                      ? 'bg-yellow-400/20 border-yellow-400/50 text-yellow-300 border'
+                      : 'bg-white/5 border border-white/10 text-white/60 hover:bg-white/10'
+                  }`}
+                  disabled={submitting}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <label className="flex items-center gap-2 text-white cursor-pointer">
             <input
@@ -424,6 +454,11 @@ export default function ParentChores() {
                 {chore.is_open === 1 && <span className="px-2 py-0.5 rounded-full bg-white/10">🌐 Open</span>}
                 {chore.do_together === 1 && <span className="px-2 py-0.5 rounded-full bg-white/10">🤝 Together</span>}
                 {chore.require_photo === 1 && <span className="px-2 py-0.5 rounded-full bg-white/10">📷 Proof</span>}
+                {chore.time_of_day && chore.time_of_day !== 'anytime' && (
+                  <span className="px-2 py-0.5 rounded-full bg-white/10">
+                    {chore.time_of_day === 'morning' ? '🌅 Morning' : chore.time_of_day === 'afternoon' ? '☀️ Afternoon' : '🌙 Evening'}
+                  </span>
+                )}
               </div>
 
               {/* Assigned kids badges */}

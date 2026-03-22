@@ -31,6 +31,7 @@ function getDb() {
       { table: 'shop_items', column: 'stock', sql: 'ALTER TABLE shop_items ADD COLUMN stock INTEGER' },
       { table: 'notifications', column: 'kid_id', sql: 'ALTER TABLE notifications ADD COLUMN kid_id INTEGER' },
       { table: 'notifications', column: 'payload', sql: 'ALTER TABLE notifications ADD COLUMN payload TEXT' },
+      { table: 'chores', column: 'time_of_day', sql: "ALTER TABLE chores ADD COLUMN time_of_day TEXT DEFAULT 'anytime'" },
     ];
 
     for (const m of migrations) {
