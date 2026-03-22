@@ -15,7 +15,7 @@ export default function KioskLayout({ children }) {
   const { childLogout } = useAuth();
 
   const handleSwitchKid = async () => {
-    await childLogout();
+    try { await childLogout(); } catch {}
     navigate('/kiosk', { replace: true });
   };
 

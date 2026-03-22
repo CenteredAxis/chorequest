@@ -100,8 +100,8 @@ router.post('/child/login', (req, res) => {
 });
 
 // POST /api/auth/child/logout
-router.post('/child/logout', requireChild, (req, res) => {
-  req.session.kidId = null;
+router.post('/child/logout', (req, res) => {
+  if (req.session) req.session.kidId = null;
   res.json({ ok: true });
 });
 
