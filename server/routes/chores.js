@@ -195,10 +195,10 @@ router.get('/open-instances', requireChild, (req, res) => {
     )
     AND c.id NOT IN (
       SELECT chore_id FROM completions
-      WHERE kid_id = ? AND status IN ('pending', 'approved')
+      WHERE status IN ('pending', 'approved')
       AND date(submitted_at) = date('now')
     )
-  `).all(kidId, kidId);
+  `).all(kidId);
 
   res.json(chores.map(c => ({ ...c, status: 'open' })));
 });

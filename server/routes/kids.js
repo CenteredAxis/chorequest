@@ -55,10 +55,15 @@ router.get('/kiosk/board', (req, res) => {
 
   // Open chores not completed today by anyone
   const openChores = db.prepare(`
-    SELECT c.title, c.coin_reward, c.xp_reward
+    SELECT c.title, c.coin_reward, c.xp_reward, c.do_together
     FROM chores c
     WHERE c.is_open = 1
-    ORDER BY c.title
+    AND c.id NOT IN (
+      SELECT chore_id FROM completions
+      WHERE status IN ('pending', 'approved')
+      AND date(submitted_at) = date('now')
+    )
+    ORDER BY c.coin_reward DESC, c.title
   `).all();
 
   res.json({ kids, open_chores: openChores });
