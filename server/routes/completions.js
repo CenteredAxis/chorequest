@@ -82,7 +82,8 @@ router.get('/pending', requireParent, (req, res) => {
 
   const pending = db
     .prepare(
-      `SELECT comp.*, c.title as chore_title, c.parent_id, k.name as kid_name, k.avatar_emoji
+      `SELECT comp.*, c.title as chore_title, c.coin_reward, c.xp_reward, c.parent_id,
+              k.name as kid_name, k.avatar_emoji
        FROM completions comp
        JOIN chores c ON comp.chore_id = c.id
        JOIN kids k ON comp.kid_id = k.id

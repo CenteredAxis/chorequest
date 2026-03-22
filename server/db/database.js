@@ -21,6 +21,28 @@ function getDb() {
     const schemaPath = path.join(__dirname, 'schema.sql');
     const schema = fs.readFileSync(schemaPath, 'utf-8');
     db.exec(schema);
+
+    // Migrations — add missing columns to existing tables
+    const migrations = [
+      { table: 'redemptions', column: 'coins_spent', sql: 'ALTER TABLE redemptions ADD COLUMN coins_spent INTEGER DEFAULT 0' },
+      { table: 'redemptions', column: 'requested_at', sql: 'ALTER TABLE redemptions ADD COLUMN requested_at DATETIME DEFAULT CURRENT_TIMESTAMP' },
+      { table: 'redemptions', column: 'parent_note', sql: 'ALTER TABLE redemptions ADD COLUMN parent_note TEXT' },
+      { table: 'shop_items', column: 'icon_emoji', sql: "ALTER TABLE shop_items ADD COLUMN icon_emoji TEXT DEFAULT '🎁'" },
+      { table: 'shop_items', column: 'stock', sql: 'ALTER TABLE shop_items ADD COLUMN stock INTEGER' },
+      { table: 'notifications', column: 'kid_id', sql: 'ALTER TABLE notifications ADD COLUMN kid_id INTEGER' },
+      { table: 'notifications', column: 'payload', sql: 'ALTER TABLE notifications ADD COLUMN payload TEXT' },
+    ];
+
+    for (const m of migrations) {
+      try {
+        const cols = db.prepare(`PRAGMA table_info(${m.table})`).all();
+        if (!cols.find(c => c.name === m.column)) {
+          db.exec(m.sql);
+        }
+      } catch (e) {
+        // Column may already exist, ignore
+      }
+    }
   }
 
   return db;

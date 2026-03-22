@@ -86,6 +86,8 @@ CREATE TABLE IF NOT EXISTS shop_items (
   description TEXT,
   coin_cost INTEGER NOT NULL,
   category TEXT DEFAULT 'Physical',
+  icon_emoji TEXT DEFAULT '🎁',
+  stock INTEGER,
   is_active INTEGER DEFAULT 1,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (parent_id) REFERENCES parents(id)
@@ -96,9 +98,12 @@ CREATE TABLE IF NOT EXISTS redemptions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   shop_item_id INTEGER NOT NULL,
   kid_id INTEGER NOT NULL,
+  coins_spent INTEGER DEFAULT 0,
   status TEXT DEFAULT 'pending',
+  requested_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   redeemed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   fulfilled_at DATETIME,
+  parent_note TEXT,
   FOREIGN KEY (shop_item_id) REFERENCES shop_items(id),
   FOREIGN KEY (kid_id) REFERENCES kids(id)
 );
