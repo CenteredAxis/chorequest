@@ -99,7 +99,7 @@ export default function KioskDashboard() {
         </div>
 
         {/* Quick action buttons */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="grid grid-cols-3 gap-3 mb-4">
           <button
             onClick={() => navigate('/kiosk/chores')}
             className="relative flex flex-col items-center gap-2 p-5 rounded-2xl font-bold text-white transition-all active:scale-95"
@@ -128,14 +128,6 @@ export default function KioskDashboard() {
           >
             <span className="text-3xl">🏅</span>
             <span className="font-quest text-sm">Badges</span>
-          </button>
-          <button
-            onClick={() => navigate('/kiosk')}
-            className="flex flex-col items-center gap-2 p-5 rounded-2xl font-bold transition-all active:scale-95"
-            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)' }}
-          >
-            <span className="text-3xl">🔄</span>
-            <span className="font-quest text-sm">Switch</span>
           </button>
         </div>
       </div>
