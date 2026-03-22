@@ -24,6 +24,46 @@ router.get('/all/list', (req, res) => {
   res.json(kids);
 });
 
+// GET /api/kids/kiosk/board — public kiosk board with kids + chore previews (no auth)
+router.get('/kiosk/board', (req, res) => {
+  const db = getDb();
+
+  // All active kids
+  const kids = db.prepare(
+    'SELECT id, name, avatar_emoji, coins, level, streak FROM kids WHERE is_active = 1 ORDER BY name'
+  ).all();
+
+  // Per-kid: assigned chores not yet completed today
+  const choreStmt = db.prepare(`
+    SELECT c.title, c.coin_reward, ca.kid_id
+    FROM chores c
+    JOIN chore_assignments ca ON c.id = ca.chore_id
+    WHERE ca.kid_id = ?
+    AND c.id NOT IN (
+      SELECT chore_id FROM completions
+      WHERE kid_id = ? AND status IN ('pending', 'approved')
+      AND date(submitted_at) = date('now')
+    )
+    ORDER BY c.title
+  `);
+
+  for (const kid of kids) {
+    const chores = choreStmt.all(kid.id, kid.id);
+    kid.chore_count = chores.length;
+    kid.pending_chores = chores.slice(0, 3).map(c => ({ title: c.title, coin_reward: c.coin_reward }));
+  }
+
+  // Open chores not completed today by anyone
+  const openChores = db.prepare(`
+    SELECT c.title, c.coin_reward, c.xp_reward
+    FROM chores c
+    WHERE c.is_open = 1
+    ORDER BY c.title
+  `).all();
+
+  res.json({ kids, open_chores: openChores });
+});
+
 // GET /api/kids/:id — single kid with badge count
 router.get('/:id', requireParent, (req, res) => {
   const db = getDb();

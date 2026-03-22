@@ -33,6 +33,7 @@ export const auth = {
 
 export const kids = {
   listAll: () => fetch(`${BASE_URL}/kids/all/list`).then(handleResponse),
+  kioskBoard: () => fetch(`${BASE_URL}/kids/kiosk/board`).then(handleResponse),
   list: () => fetch(`${BASE_URL}/kids`).then(handleResponse),
   create: (data) => fetch(`${BASE_URL}/kids`, {
     method: 'POST',
