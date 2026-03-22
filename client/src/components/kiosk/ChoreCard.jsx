@@ -13,11 +13,11 @@ export default function ChoreCard({ chore, narrative, onClaim, onJoin, onSubmit 
   const style = STATUS_STYLE[chore.status] ?? STATUS_STYLE.open;
 
   return (
-    <div className={`rounded-2xl border-2 p-4 transition-all duration-150 ${style}`}>
+    <div className={`rounded-2xl border-2 p-4 transition-all duration-150 flex flex-col ${style}`}>
       <div className="flex items-start gap-3">
         <span className="text-3xl">{chore.icon_emoji ?? '📋'}</span>
         <div className="flex-1 min-w-0">
-          <p className="text-white font-bold truncate">{chore.title}</p>
+          <p className="text-white font-bold">{chore.title}</p>
           {narrative ? (
             <p className="text-yellow-200/70 text-xs mt-0.5 italic line-clamp-3">{narrative}</p>
           ) : chore.description && (
@@ -32,7 +32,7 @@ export default function ChoreCard({ chore, narrative, onClaim, onJoin, onSubmit 
       </div>
 
       {/* Actions */}
-      <div className="flex gap-2 mt-3">
+      <div className="flex gap-2 mt-auto pt-3">
         {onClaim && (
           <button
             onClick={onClaim}

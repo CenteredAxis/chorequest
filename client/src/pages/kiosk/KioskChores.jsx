@@ -101,11 +101,11 @@ export default function KioskChores() {
   const items   = tab === 'mine' ? (mine || []) : tab === 'open' ? (open || []) : (completed || []);
 
   return (
-    <div className="min-h-screen px-4 pt-6">
+    <div className="min-h-screen px-6 pt-6 max-w-5xl mx-auto">
       <h1 className="text-2xl font-black text-white font-quest text-center mb-5">Quest Board</h1>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-5 bg-white/5 rounded-2xl p-1">
+      <div className="flex gap-2 mb-5 bg-white/5 rounded-2xl p-1 max-w-lg mx-auto">
         {TABS.map(t => (
           <button
             key={t.key}
@@ -137,7 +137,7 @@ export default function KioskChores() {
           </p>
         </div>
       ) : (
-        <div className="space-y-3 pb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 pb-4">
           {items.map(chore => (
             <ChoreCard
               key={chore.id}
