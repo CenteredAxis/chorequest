@@ -8,39 +8,37 @@ import { QuestLoadingScreen } from '../../components/ui/Spinner.jsx';
 import { useToast } from '../../components/ui/Toast.jsx';
 
 const TABS = [
-  { key: 'mine',      label: 'My Quests',   emoji: '⚔️' },
-  { key: 'open',      label: 'Open Quests', emoji: '🌐' },
-  { key: 'completed', label: 'Done',        emoji: '✅' },
+  { key: 'daily',     label: 'Daily Quests', emoji: '⚔️' },
+  { key: 'completed', label: 'Done',         emoji: '✅' },
 ];
 
 export default function KioskChores() {
   const toast = useToast();
   const { child, updateChild } = useAuth();
-  const [tab, setTab] = useState('mine');
-  const [submitChore, setSubmitChore] = useState(null); // chore_instance being submitted
+  const [tab, setTab] = useState('daily');
+  const [submitChore, setSubmitChore] = useState(null);
   const [note, setNote] = useState('');
   const [photo, setPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [joinConfirm, setJoinConfirm] = useState(null); // chore to join
+  const [joinConfirm, setJoinConfirm] = useState(null);
   const [narratives, setNarratives] = useState({});
   const fileRef = useRef();
 
-  const { data: mine,      loading: loadMine,      refetch: refetchMine }      = useApi(() => choresApi.myInstances(),   []);
-  const { data: open,      loading: loadOpen,      refetch: refetchOpen }      = useApi(() => choresApi.openInstances(), []);
+  const { data: daily,     loading: loadDaily,     refetch: refetchDaily }     = useApi(() => choresApi.dailyQuests(), []);
   const { data: completed, loading: loadCompleted, refetch: refetchCompleted } = useApi(() => choresApi.completed(), []);
 
-  const refetchAll = () => { refetchMine(); refetchOpen(); refetchCompleted(); };
+  const refetchAll = () => { refetchDaily(); refetchCompleted(); };
 
   // Fetch AI narratives for visible chores
   useEffect(() => {
-    const allChores = [...(mine || []), ...(open || [])];
+    const allChores = [...(daily?.dailyQuests || []), ...(daily?.bonusQuest ? [daily.bonusQuest] : [])];
     const ids = [...new Set(allChores.map(c => c.chore_id || c.id).filter(Boolean))];
     if (ids.length === 0) return;
     aiApi.narratives(ids)
       .then(res => setNarratives(res.narratives || {}))
-      .catch(() => {}); // Silently fail — narratives are optional
-  }, [mine, open]);
+      .catch(() => {});
+  }, [daily]);
 
   const handleClaim = async (instanceId) => {
     try {
@@ -86,7 +84,11 @@ export default function KioskChores() {
         const res = await uploadProof(photo);
         proof_photo_url = res.url;
       }
-      await choresApi.submit(submitChore.chore_id || submitChore.id, { notes: note, proof_photo_url });
+      await choresApi.submit(submitChore.chore_id || submitChore.id, {
+        notes: note,
+        proof_photo_url,
+        is_bonus: submitChore.is_bonus ? 1 : 0,
+      });
       toast.success('Quest submitted! Waiting for approval.');
       setSubmitChore(null);
       refetchAll();
@@ -97,8 +99,11 @@ export default function KioskChores() {
     }
   };
 
-  const loading = tab === 'mine' ? loadMine : tab === 'open' ? loadOpen : loadCompleted;
-  const items   = tab === 'mine' ? (mine || []) : tab === 'open' ? (open || []) : (completed || []);
+  const progress = daily?.progress || { completed: 0, total: 0 };
+  const quests = daily?.dailyQuests || [];
+  const bonusQuest = daily?.bonusQuest || null;
+  const loading = tab === 'daily' ? loadDaily : loadCompleted;
+  const completedItems = completed || [];
 
   return (
     <div className="min-h-screen px-6 pt-6 max-w-5xl mx-auto">
@@ -125,34 +130,93 @@ export default function KioskChores() {
       {/* Content */}
       {loading ? (
         <QuestLoadingScreen />
-      ) : items.length === 0 ? (
-        <div className="text-center py-16 text-white/30">
-          <div className="text-5xl mb-3">
-            {tab === 'mine' ? '⚔️' : tab === 'open' ? '🌐' : '✅'}
-          </div>
-          <p className="font-quest">
-            {tab === 'mine'      ? 'No quests assigned yet' :
-             tab === 'open'      ? 'No open quests available' :
-             'No completed quests today'}
-          </p>
+      ) : tab === 'daily' ? (
+        <div>
+          {/* Progress indicator */}
+          {progress.total > 0 && (
+            <div className="text-center mb-5">
+              <span className="text-white/70 font-quest text-lg">
+                {progress.completed}/{progress.total} Quests Complete
+              </span>
+              <div className="w-48 h-2.5 bg-white/10 rounded-full mx-auto mt-2 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-yellow-400 to-amber-500 rounded-full transition-all duration-500"
+                  style={{ width: `${progress.total > 0 ? (progress.completed / progress.total) * 100 : 0}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Daily quests grid */}
+          {quests.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 pb-4">
+              {quests.map(chore => (
+                <ChoreCard
+                  key={chore.id}
+                  chore={chore}
+                  narrative={narratives[chore.chore_id || chore.id]}
+                  onClaim={chore.status === 'open' ? () => handleClaim(chore.id) : undefined}
+                  onJoin={chore.do_together && chore.status === 'open' ? () => setJoinConfirm(chore) : undefined}
+                  onSubmit={
+                    (chore.status === 'available' || chore.status === 'claimed')
+                      ? () => handleOpenSubmit(chore)
+                      : undefined
+                  }
+                />
+              ))}
+            </div>
+          ) : progress.completed > 0 && !bonusQuest ? (
+            <div className="text-center py-16 text-white/30">
+              <div className="text-5xl mb-3">🎉</div>
+              <p className="font-quest text-lg text-white/50">All done for today!</p>
+              <p className="font-quest text-sm mt-1">Great work, adventurer!</p>
+            </div>
+          ) : progress.total === 0 ? (
+            <div className="text-center py-16 text-white/30">
+              <div className="text-5xl mb-3">⚔️</div>
+              <p className="font-quest">No quests available today</p>
+            </div>
+          ) : null}
+
+          {/* Bonus quest */}
+          {bonusQuest && (
+            <div className="mt-4 mb-4">
+              <div className="p-1 rounded-2xl" style={{ background: 'linear-gradient(135deg, #fbbf24, #f59e0b, #ef4444)' }}>
+                <div className="bg-quest-bg rounded-xl p-4">
+                  <div className="text-center text-yellow-300 font-quest text-sm mb-3 flex items-center justify-center gap-2">
+                    <span className="text-lg">⭐</span>
+                    Bonus Quest — 1.5x Coins!
+                    <span className="text-lg">⭐</span>
+                  </div>
+                  <ChoreCard
+                    chore={bonusQuest}
+                    narrative={narratives[bonusQuest.chore_id || bonusQuest.id]}
+                    onClaim={bonusQuest.status === 'open' ? () => handleClaim(bonusQuest.id) : undefined}
+                    onSubmit={() => handleOpenSubmit(bonusQuest)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 pb-4">
-          {items.map(chore => (
-            <ChoreCard
-              key={chore.id}
-              chore={chore}
-              narrative={narratives[chore.chore_id || chore.id]}
-              onClaim={tab === 'open' ? () => handleClaim(chore.id) : undefined}
-              onJoin={chore.do_together && tab === 'open' ? () => setJoinConfirm(chore) : undefined}
-              onSubmit={
-                (tab === 'mine' && (chore.status === 'available' || chore.status === 'claimed'))
-                  ? () => handleOpenSubmit(chore)
-                  : undefined
-              }
-            />
-          ))}
-        </div>
+        /* Completed tab */
+        completedItems.length === 0 ? (
+          <div className="text-center py-16 text-white/30">
+            <div className="text-5xl mb-3">✅</div>
+            <p className="font-quest">No completed quests yet</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 pb-4">
+            {completedItems.map(chore => (
+              <ChoreCard
+                key={chore.id}
+                chore={chore}
+                narrative={narratives[chore.chore_id || chore.id]}
+              />
+            ))}
+          </div>
+        )
       )}
 
       {/* Submit modal */}
@@ -164,7 +228,9 @@ export default function KioskChores() {
         {submitChore && (
           <div className="space-y-4">
             <div className="text-center text-white/60 text-sm">
-              🪙 +{submitChore.coin_reward} &nbsp;·&nbsp; ⭐ +{submitChore.xp_reward} XP
+              🪙 +{submitChore.is_bonus ? Math.floor(submitChore.coin_reward * 1.5) : submitChore.coin_reward}
+              {submitChore.is_bonus && <span className="text-yellow-300 font-bold ml-1">(1.5x!)</span>}
+              &nbsp;·&nbsp; ⭐ +{submitChore.xp_reward} XP
             </div>
 
             {submitChore.require_photo && (

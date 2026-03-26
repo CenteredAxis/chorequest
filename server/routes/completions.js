@@ -19,7 +19,7 @@ router.post('/:id/approve', requireParent, (req, res) => {
 
   try {
     const completion = db
-      .prepare('SELECT chore_id, kid_id FROM completions WHERE id = ?')
+      .prepare('SELECT chore_id, kid_id, is_bonus FROM completions WHERE id = ?')
       .get(req.params.id);
 
     if (!completion) {
@@ -28,9 +28,12 @@ router.post('/:id/approve', requireParent, (req, res) => {
 
     const chore = db.prepare('SELECT * FROM chores WHERE id = ?').get(completion.chore_id);
 
-    // Award coins and XP
+    // Award coins and XP (bonus quests get 1.5x coins)
+    const coinReward = completion.is_bonus
+      ? Math.floor(chore.coin_reward * 1.5)
+      : chore.coin_reward;
     db.prepare('UPDATE kids SET coins = coins + ? WHERE id = ?').run(
-      chore.coin_reward,
+      coinReward,
       completion.kid_id
     );
 
@@ -53,7 +56,8 @@ router.post('/:id/approve', requireParent, (req, res) => {
       leveledUp,
       newLevel,
       streak: streakResult.streak,
-      newBadges
+      newBadges,
+      coinReward
     });
   } catch (error) {
     res.status(400).json({ error: error.message });

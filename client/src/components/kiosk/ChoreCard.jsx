@@ -15,7 +15,9 @@ function getStars(xp) {
 
 export default function ChoreCard({ chore, narrative, onClaim, onJoin, onSubmit }) {
   const stars = getStars(chore.xp_reward || 0);
-  const style = STATUS_STYLE[chore.status] ?? STATUS_STYLE.open;
+  const style = chore.is_bonus
+    ? 'border-yellow-400/60 bg-yellow-500/10'
+    : (STATUS_STYLE[chore.status] ?? STATUS_STYLE.open);
 
   return (
     <div className={`rounded-2xl border-2 p-4 transition-all duration-150 flex flex-col ${style}`}>
@@ -30,7 +32,7 @@ export default function ChoreCard({ chore, narrative, onClaim, onJoin, onSubmit 
           )}
           <div className="flex items-center gap-3 mt-2 text-xs text-white/60">
             <span>{stars}</span>
-            <span>🪙 {chore.coin_reward}</span>
+            <span>🪙 {chore.is_bonus ? <>{Math.floor(chore.coin_reward * 1.5)} <span className="text-yellow-300 font-bold">1.5x!</span></> : chore.coin_reward}</span>
             <span>✨ {chore.xp_reward} XP</span>
           </div>
         </div>

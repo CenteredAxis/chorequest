@@ -222,6 +222,100 @@ router.get('/open-instances', requireChild, (req, res) => {
   res.json(sortByTimeRelevance(chores).map(c => ({ ...c, status: 'open' })));
 });
 
+// GET /api/chores/daily-quests - curated daily quest board for kid
+router.get('/daily-quests', requireChild, (req, res) => {
+  const db = getDb();
+  const kidId = req.session.kidId;
+
+  // Get parent's max_daily_quests setting
+  const setting = db.prepare(
+    'SELECT s.max_daily_quests FROM kids k JOIN settings s ON k.parent_id = s.parent_id WHERE k.id = ?'
+  ).get(kidId);
+  const maxQuests = setting?.max_daily_quests || 3;
+
+  // Today's completions (pending + approved) count toward the daily total
+  const completedToday = db.prepare(`
+    SELECT c.*, c.id as chore_id, c.title as chore_title,
+           comp.status, comp.submitted_at, comp.reviewed_at, comp.is_bonus
+    FROM completions comp
+    JOIN chores c ON c.id = comp.chore_id
+    WHERE comp.kid_id = ? AND comp.status IN ('pending', 'approved')
+    AND date(comp.submitted_at) = date('now')
+  `).all(kidId);
+
+  const completedChoreIds = completedToday.map(c => c.chore_id);
+  const nonBonusCompleted = completedToday.filter(c => !c.is_bonus);
+
+  // Assigned chores not yet completed today
+  const assigned = db.prepare(`
+    SELECT DISTINCT c.*, c.id as chore_id, c.title as chore_title
+    FROM chores c
+    JOIN chore_assignments ca ON c.id = ca.chore_id
+    WHERE ca.kid_id = ?
+    AND c.id NOT IN (
+      SELECT chore_id FROM completions
+      WHERE kid_id = ? AND status IN ('pending', 'approved')
+      AND date(submitted_at) = date('now')
+    )
+  `).all(kidId, kidId).map(c => ({ ...c, status: 'available' }));
+
+  // Open chores not assigned to this kid, not completed today
+  const open = db.prepare(`
+    SELECT c.*, c.id as chore_id, c.title as chore_title
+    FROM chores c
+    WHERE c.is_open = 1
+    AND c.id NOT IN (
+      SELECT chore_id FROM chore_assignments WHERE kid_id = ?
+    )
+    AND c.id NOT IN (
+      SELECT chore_id FROM completions
+      WHERE status IN ('pending', 'approved')
+      AND date(submitted_at) = date('now')
+    )
+  `).all(kidId).map(c => ({ ...c, status: 'open' }));
+
+  // Assigned chores always take priority for daily slots
+  const dailyQuests = [...assigned];
+  const slotsRemaining = Math.max(0, maxQuests - nonBonusCompleted.length - assigned.length);
+
+  // Deterministic daily shuffle for open quests: stable per kid per day, rotates daily
+  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+  const shuffled = open
+    .map(c => ({ ...c, _sort: ((kidId * 31 + c.id) * dayOfYear) % 10007 }))
+    .sort((a, b) => a._sort - b._sort)
+    .map(({ _sort, ...c }) => c);
+
+  // Fill remaining slots from shuffled open quests, preferring time-relevant ones
+  const selectedOpen = sortByTimeRelevance(shuffled).slice(0, slotsRemaining);
+  dailyQuests.push(...selectedOpen);
+
+  // Sort the final combined list by time relevance
+  const sortedDaily = sortByTimeRelevance(dailyQuests);
+
+  // Bonus quest: available when all daily quests are done
+  const totalDailyTarget = Math.min(maxQuests, assigned.length + open.length + nonBonusCompleted.length);
+  const allDone = nonBonusCompleted.length >= totalDailyTarget && sortedDaily.length === 0;
+
+  let bonusQuest = null;
+  if (allDone) {
+    // Pick a bonus from remaining chores not completed today
+    const remaining = [...assigned, ...shuffled].filter(c => !completedChoreIds.includes(c.chore_id || c.id));
+    if (remaining.length > 0) {
+      bonusQuest = { ...remaining[0], is_bonus: true };
+    }
+  }
+
+  res.json({
+    dailyQuests: sortedDaily,
+    completedToday,
+    bonusQuest,
+    progress: {
+      completed: nonBonusCompleted.length,
+      total: totalDailyTarget,
+    },
+  });
+});
+
 // GET /api/chores/completed - kid's completed chores
 router.get('/completed', requireChild, (req, res) => {
   const db = getDb();
@@ -261,19 +355,20 @@ router.get('/pending', requireParent, (req, res) => {
 
 // POST /api/chores/:id/submit - kid submits completion
 router.post('/:id/submit', requireChild, upload.single('photo'), (req, res) => {
-  const { notes } = req.body;
+  const { notes, is_bonus } = req.body;
   const db = getDb();
 
   try {
     const stmt = db.prepare(
-      'INSERT INTO completions (chore_id, kid_id, status, notes, photo_path) VALUES (?, ?, ?, ?, ?)'
+      'INSERT INTO completions (chore_id, kid_id, status, notes, photo_path, is_bonus) VALUES (?, ?, ?, ?, ?, ?)'
     );
     const result = stmt.run(
       req.params.id,
       req.session.kidId,
       'pending',
       notes || null,
-      req.file ? req.file.path : null
+      req.file ? req.file.path : null,
+      is_bonus ? 1 : 0
     );
 
     res.status(201).json({ id: result.lastInsertRowid, message: 'Submission created' });
@@ -292,7 +387,7 @@ router.post('/completions/:id/approve', requireParent, (req, res) => {
 
   try {
     const completion = db
-      .prepare('SELECT chore_id, kid_id FROM completions WHERE id = ?')
+      .prepare('SELECT chore_id, kid_id, is_bonus FROM completions WHERE id = ?')
       .get(req.params.id);
 
     if (!completion) {
@@ -301,9 +396,12 @@ router.post('/completions/:id/approve', requireParent, (req, res) => {
 
     const chore = db.prepare('SELECT * FROM chores WHERE id = ?').get(completion.chore_id);
 
-    // Award coins and XP
+    // Award coins and XP (bonus quests get 1.5x coins)
+    const coinReward = completion.is_bonus
+      ? Math.floor(chore.coin_reward * 1.5)
+      : chore.coin_reward;
     db.prepare('UPDATE kids SET coins = coins + ? WHERE id = ?').run(
-      chore.coin_reward,
+      coinReward,
       completion.kid_id
     );
 
@@ -326,7 +424,8 @@ router.post('/completions/:id/approve', requireParent, (req, res) => {
       leveledUp,
       newLevel,
       streak: streakResult.streak,
-      newBadges
+      newBadges,
+      coinReward
     });
   } catch (error) {
     res.status(400).json({ error: error.message });

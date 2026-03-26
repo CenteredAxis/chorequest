@@ -68,6 +68,7 @@ export const chores = {
   myInstances: () => fetch(`${BASE_URL}/chores/my-instances`).then(handleResponse),
   openInstances: () => fetch(`${BASE_URL}/chores/open-instances`).then(handleResponse),
   completed: () => fetch(`${BASE_URL}/chores/completed`).then(handleResponse),
+  dailyQuests: () => fetch(`${BASE_URL}/chores/daily-quests`).then(handleResponse),
   submit: (instanceId, data) => fetch(`${BASE_URL}/chores/${instanceId}/submit`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

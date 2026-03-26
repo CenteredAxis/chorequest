@@ -14,6 +14,7 @@ export default function ParentSettings() {
   const [coinLabel, setCoinLabel] = useState('');
   const [screensaverTimeout, setScreensaverTimeout] = useState('');
   const [soundsEnabled, setSoundsEnabled] = useState(true);
+  const [maxDailyQuests, setMaxDailyQuests] = useState(3);
 
   useEffect(() => {
     if (settings) {
@@ -22,6 +23,7 @@ export default function ParentSettings() {
       setCoinLabel(settings.coin_label || 'Gold Coins');
       setScreensaverTimeout(settings.screensaver_timeout || '300');
       setSoundsEnabled(settings.sounds_enabled !== false);
+      setMaxDailyQuests(settings.max_daily_quests || 3);
     }
   }, [settings]);
 
@@ -36,6 +38,7 @@ export default function ParentSettings() {
         coin_label: coinLabel,
         screensaver_timeout: parseInt(screensaverTimeout),
         sounds_enabled: soundsEnabled,
+        max_daily_quests: parseInt(maxDailyQuests),
       };
 
       await settingsApi.update(data);
@@ -106,6 +109,21 @@ export default function ParentSettings() {
             className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-white/40 focus:outline-none focus:border-yellow-400/40"
           />
           <p className="text-white/40 text-xs mt-1">Time before kiosk returns to avatar select screen (30-3600 seconds)</p>
+        </div>
+
+        {/* Daily Quest Limit */}
+        <div>
+          <label className="block text-white/70 text-sm font-medium mb-2">Daily Quest Limit</label>
+          <input
+            type="number"
+            value={maxDailyQuests}
+            onChange={(e) => setMaxDailyQuests(e.target.value)}
+            placeholder="3"
+            min="1"
+            max="10"
+            className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-white/40 focus:outline-none focus:border-yellow-400/40"
+          />
+          <p className="text-white/40 text-xs mt-1">How many quests each child sees per day (1-10). A bonus quest unlocks after completing them all!</p>
         </div>
 
         {/* Sounds */}

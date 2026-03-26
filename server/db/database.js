@@ -32,6 +32,8 @@ function getDb() {
       { table: 'notifications', column: 'kid_id', sql: 'ALTER TABLE notifications ADD COLUMN kid_id INTEGER' },
       { table: 'notifications', column: 'payload', sql: 'ALTER TABLE notifications ADD COLUMN payload TEXT' },
       { table: 'chores', column: 'time_of_day', sql: "ALTER TABLE chores ADD COLUMN time_of_day TEXT DEFAULT 'anytime'" },
+      { table: 'settings', column: 'max_daily_quests', sql: 'ALTER TABLE settings ADD COLUMN max_daily_quests INTEGER DEFAULT 3' },
+      { table: 'completions', column: 'is_bonus', sql: 'ALTER TABLE completions ADD COLUMN is_bonus INTEGER DEFAULT 0' },
     ];
 
     for (const m of migrations) {

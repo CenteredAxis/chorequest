@@ -19,18 +19,19 @@ router.get('/', requireParent, (req, res) => {
 
 // PUT /api/settings - update settings
 router.put('/', requireParent, (req, res) => {
-  const { household_name, timezone, coin_label, screensaver_timeout, sounds_enabled } = req.body;
+  const { household_name, timezone, coin_label, screensaver_timeout, sounds_enabled, max_daily_quests } = req.body;
   const db = getDb();
 
   try {
     db.prepare(
-      'UPDATE settings SET household_name = ?, timezone = ?, coin_label = ?, screensaver_timeout = ?, sounds_enabled = ? WHERE parent_id = ?'
+      'UPDATE settings SET household_name = ?, timezone = ?, coin_label = ?, screensaver_timeout = ?, sounds_enabled = ?, max_daily_quests = ? WHERE parent_id = ?'
     ).run(
       household_name || 'My Household',
       timezone || 'UTC',
       coin_label || 'Gold Coins',
       screensaver_timeout || 300,
       sounds_enabled !== undefined ? (sounds_enabled ? 1 : 0) : 1,
+      Math.max(1, Math.min(10, parseInt(max_daily_quests) || 3)),
       req.session.parentId
     );
 

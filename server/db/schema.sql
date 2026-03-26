@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS settings (
   coin_label TEXT DEFAULT 'Gold Coins',
   screensaver_timeout INTEGER DEFAULT 300,
   sounds_enabled INTEGER DEFAULT 1,
+  max_daily_quests INTEGER DEFAULT 3,
   FOREIGN KEY (parent_id) REFERENCES parents(id)
 );
 
@@ -74,6 +75,7 @@ CREATE TABLE IF NOT EXISTS completions (
   submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   reviewed_at DATETIME,
   do_together_group_id INTEGER,
+  is_bonus INTEGER DEFAULT 0,
   FOREIGN KEY (chore_id) REFERENCES chores(id),
   FOREIGN KEY (kid_id) REFERENCES kids(id)
 );
